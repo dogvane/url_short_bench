@@ -7,12 +7,12 @@ namespace v2
     [ApiController]
     public class ShortUrlController : ControllerBase
     {
-        private readonly DbRepository _dbRepository;
+        private readonly IShortUrlRepository _repository;
         private static readonly ShortUrlStats stats = new(() => 0); // TODO: fix count
 
-        public ShortUrlController(DbRepository dbRepository)
+        public ShortUrlController(IShortUrlRepository repository)
         {
-            _dbRepository = dbRepository;
+            _repository = repository;
         }
 
         [HttpPost("/create")]
@@ -23,7 +23,7 @@ namespace v2
                 if (req == null || string.IsNullOrWhiteSpace(req.url))
                     return BadRequest("url is required");
 
-                var (id, alias) = _dbRepository.CreateShortLink(req.url, req.expire);
+                var (id, alias) = _repository.CreateShortLink(req.url, req.expire);
 
                 stats.IncCreate();
 
@@ -43,7 +43,7 @@ namespace v2
         [HttpGet("/u/{alias}")]
         public async Task<IActionResult> RedirectToUrl(string alias)
         {
-            var (id, url, expire) = await _dbRepository.GetUrlByAliasAsync(alias);
+            var (id, url, expire) = await _repository.GetUrlByAliasAsync(alias);
             if (url != null)
             {
                 if (expire > 0 && expire < System.DateTime.UtcNow.Ticks)

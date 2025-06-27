@@ -6,7 +6,7 @@ using url_short.common;
 
 namespace v2
 {
-    public class DbRepository
+    public class DbRepository : IShortUrlRepository
     {
         private readonly string _connectionString;
         private readonly IShortCodeGen _shortCodeGen;
@@ -108,6 +108,22 @@ namespace v2
                 connection.Execute(updateSql, new { alias = aliasStr, id });
 
                 return (id, aliasStr);
+            }
+        }
+
+        public long GetCurrentMaxId()
+        {
+            try
+            {
+                using var connection = new SqliteConnection(_connectionString);
+                connection.Open();
+                var maxId = connection.ExecuteScalar<long?>("SELECT MAX(id) FROM short_links");
+                return maxId ?? 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取最大ID时出错: {ex.Message}");
+                return 0;
             }
         }
     }
