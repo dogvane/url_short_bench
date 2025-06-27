@@ -9,7 +9,7 @@ import threading
 
 # 分布式的测试命令：
 # 主节点 (Master): 负责分发任务和汇总数据，需要指定测试目标 --host
-# locust -f v1_test.py --master --headless --run-time 5m -u 5000 -r 500 --host=http://192.168.1.3:10086
+# locust -f v1_test.py --master --headless --run-time 5m -u 1000 -r 500 --host=http://192.168.1.3:10086
 # 工作节点 (Worker): 负责执行任务，只需要知道主节点的地址
 # locust -f v1_test.py --worker --master-host=192.168.1.3
 
