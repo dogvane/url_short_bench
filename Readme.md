@@ -14,3 +14,6 @@ bench_test 是放置基准测试的代码。性能测试使用 locust 作为测�
 代码仅保证基本可完成测试用例测试。
 当前项目仅限于观察AI的代码生成能力。
 
+
+性能测试启动命令：
+dotnet run --configuration Release --gcServer

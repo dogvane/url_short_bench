@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
+using url_short.common;
 
 namespace v2
 {
@@ -15,14 +16,14 @@ namespace v2
         }
 
         [HttpPost("/create")]
-        public async Task<IActionResult> Create([FromBody] CreateRequest req)
+        public IActionResult Create([FromBody] CreateRequest req)
         {
             try
             {
                 if (req == null || string.IsNullOrWhiteSpace(req.url))
                     return BadRequest("url is required");
 
-                var (id, alias) = await _dbRepository.CreateShortLinkAsync(req.url, req.expire);
+                var (id, alias) = _dbRepository.CreateShortLink(req.url, req.expire);
 
                 stats.IncCreate();
 

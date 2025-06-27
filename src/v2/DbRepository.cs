@@ -2,12 +2,14 @@ using Dapper;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Threading.Tasks;
+using url_short.common;
 
 namespace v2
 {
     public class DbRepository
     {
         private readonly string _connectionString;
+        private readonly IShortCodeGen _shortCodeGen;
         private const string TableCheckSql = @"CREATE TABLE IF NOT EXISTS short_links (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             alias TEXT UNIQUE,
@@ -19,6 +21,7 @@ namespace v2
         public DbRepository(string connectionString)
         {
             _connectionString = connectionString;
+            _shortCodeGen = new Base62Converter();
             EnsureTable();
         }
 
@@ -38,6 +41,46 @@ namespace v2
                 cmd.ExecuteNonQuery();
             }
             connection.Execute(TableCheckSql);
+            
+            // 启动时输出数据库基本情况
+            OutputDatabaseStats();
+        }
+
+        private void OutputDatabaseStats()
+        {
+            try
+            {
+                using var connection = new SqliteConnection(_connectionString);
+                connection.Open();
+                
+                // 获取总记录数
+                var totalCount = connection.ExecuteScalar<long>("SELECT COUNT(*) FROM short_links");
+                
+                // 获取有过期时间的记录数
+                var expiredCount = connection.ExecuteScalar<long>("SELECT COUNT(*) FROM short_links WHERE expire > 0 AND expire < @now", new { now = DateTime.UtcNow.Ticks });
+                
+                // 获取最早和最新的记录创建时间
+                var earliestRecord = connection.QuerySingleOrDefault<DateTime?>("SELECT MIN(created_at) FROM short_links");
+                var latestRecord = connection.QuerySingleOrDefault<DateTime?>("SELECT MAX(created_at) FROM short_links");
+                
+                // 获取数据库文件大小
+                var dbSize = connection.ExecuteScalar<long>("PRAGMA page_count") * connection.ExecuteScalar<long>("PRAGMA page_size");
+                
+                Console.WriteLine("=== 数据库基本情况 ===");
+                Console.WriteLine($"总记录数: {totalCount:N0}");
+                Console.WriteLine($"已过期记录数: {expiredCount:N0}");
+                Console.WriteLine($"有效记录数: {totalCount - expiredCount:N0}");
+                if (earliestRecord.HasValue && latestRecord.HasValue)
+                {
+                    Console.WriteLine($"数据时间范围: {earliestRecord:yyyy-MM-dd HH:mm:ss} 至 {latestRecord:yyyy-MM-dd HH:mm:ss}");
+                }
+                Console.WriteLine($"数据库大小: {dbSize / 1024.0 / 1024.0:F2} MB");
+                Console.WriteLine("==================");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取数据库统计信息时出错: {ex.Message}");
+            }
         }
 
         public async Task<(long id, string url, long expire)> GetUrlByAliasAsync(string alias)
@@ -48,7 +91,7 @@ namespace v2
         }
 
         private static readonly object _createLock = new object();
-        public async Task<(long id, string alias)> CreateShortLinkAsync(string url, int? expireSeconds)
+        public (long id, string alias) CreateShortLink(string url, int? expireSeconds)
         {
             lock (_createLock)
             {
@@ -60,7 +103,7 @@ namespace v2
                 connection.Execute(insertSql, new { alias = tempAlias, url, expire });
 
                 var id = connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
-                string aliasStr = Base62Converter.Encode(id);
+                string aliasStr = _shortCodeGen.Encode(id);
                 var updateSql = "UPDATE short_links SET alias = @alias WHERE id = @id;";
                 connection.Execute(updateSql, new { alias = aliasStr, id });
 
