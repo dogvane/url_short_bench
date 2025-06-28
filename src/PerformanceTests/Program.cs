@@ -20,9 +20,21 @@ namespace PerformanceTests
             }
 
             // 根据参数选择运行的基准测试
-            var summary = args.Length > 0 && args[0] == "QuickDbRepositoryBenchmark" 
-                ? BenchmarkRunner.Run<QuickDbRepositoryBenchmark>()
-                : BenchmarkRunner.Run<DbRepositoryBenchmark>();
+            BenchmarkDotNet.Reports.Summary summary;
+            
+            if (args.Length > 0)
+            {
+                summary = args[0] switch
+                {
+                    "quick" or "Quick" => BenchmarkRunner.Run<QuickDbRepositoryBenchmark>(),
+                    "simple" or "Simple" => BenchmarkRunner.Run<SimpleCreateShortLinkBenchmark>(),
+                    _ => BenchmarkRunner.Run<DbRepositoryBenchmark>()
+                };
+            }
+            else
+            {
+                summary = BenchmarkRunner.Run<DbRepositoryBenchmark>();
+            }
             
             Console.WriteLine();
             Console.WriteLine("性能测试完成！");
@@ -42,35 +54,26 @@ namespace PerformanceTests
 
         static void ShowHelp()
         {
-            Console.WriteLine("使用方法:");
-            Console.WriteLine("  dotnet run                              # 运行完整性能测试");
-            Console.WriteLine("  dotnet run QuickDbRepositoryBenchmark   # 运行快速性能测试");
-            Console.WriteLine("  dotnet run --help                      # 显示帮助信息");
+            Console.WriteLine("使用方法 (简化版):");
+            Console.WriteLine("  dotnet run                    # 完整性能测试");
+            Console.WriteLine("  dotnet run quick              # 快速测试");
+            Console.WriteLine("  dotnet run simple             # 简化对比测试 ⭐");
+            Console.WriteLine("  dotnet run --help             # 显示帮助");
             Console.WriteLine();
-            Console.WriteLine("完整测试内容:");
-            Console.WriteLine("  1. 单次创建操作性能");
-            Console.WriteLine("  2. 单次查询操作性能");
-            Console.WriteLine("  3. 批量创建操作性能（10/100/1000）");
-            Console.WriteLine("  4. 批量查询操作性能（10/100/1000）");
-            Console.WriteLine("  5. 并发创建操作性能（10/50）");
-            Console.WriteLine("  6. 并发查询操作性能（10/50）");
-            Console.WriteLine("  7. 混合操作性能（创建+查询）");
+            Console.WriteLine("推荐测试:");
+            Console.WriteLine("  🚀 dotnet run simple          # 最重要的性能对比");
             Console.WriteLine();
-            Console.WriteLine("快速测试内容:");
-            Console.WriteLine("  1. 单次创建操作（基准）");
-            Console.WriteLine("  2. 单次查询操作");
-            Console.WriteLine("  3. 10次批量创建");
-            Console.WriteLine("  4. 10次批量查询");
+            Console.WriteLine("核心测试内容 (simple):");
+            Console.WriteLine("  • 单次创建操作对比 (基准测试)");
+            Console.WriteLine("  • 10次批量创建对比");
             Console.WriteLine();
-            Console.WriteLine("输出文件:");
-            Console.WriteLine("  - BenchmarkDotNet.Artifacts/ 目录包含详细报告");
-            Console.WriteLine("  - *.html: 图表报告");
-            Console.WriteLine("  - *.md: Markdown 格式报告");
-            Console.WriteLine("  - *.csv: CSV 数据文件");
+            Console.WriteLine("期望结果:");
+            Console.WriteLine("  ✅ AutoIncrement 版本性能提升 2倍+");
+            Console.WriteLine("  ✅ 内存使用减少 40%+");
+            Console.WriteLine("  ✅ 响应时间更稳定");
             Console.WriteLine();
-            Console.WriteLine("批处理文件:");
-            Console.WriteLine("  - run_benchmark.bat: 运行完整测试");
-            Console.WriteLine("  - run_quick_benchmark.bat: 运行快速测试");
+            Console.WriteLine("批处理文件 (简化版):");
+            Console.WriteLine("  - run_simple.bat              # 最简化测试");
         }
     }
 }

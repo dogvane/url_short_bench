@@ -16,8 +16,8 @@ echo ✅ 验证成功！性能测试工具已就绪
 echo.
 echo 可用命令：
 echo   demo_improved.bat    - 运行演示和快速测试
-echo   run_quick_benchmark.bat - 仅运行快速测试
-echo   run_benchmark.bat    - 运行完整测试
+echo   run_simple.bat       - 运行最简化快速测试
+echo   run_benchmark.bat    - 运行完整性能测试
 echo.
 pause
 exit /b 0
