@@ -63,8 +63,8 @@ services:
 
   urlshort-app-1:
     build:
-      context: ../src/v3
-      dockerfile: ../../docker-distributed/Dockerfile
+      context: ..
+      dockerfile: docker-distributed/Dockerfile
     container_name: urlshort_app_1
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -85,8 +85,8 @@ services:
 
   urlshort-app-2:
     build:
-      context: ../src/v3
-      dockerfile: ../../docker-distributed/Dockerfile
+      context: ..
+      dockerfile: docker-distributed/Dockerfile
     container_name: urlshort_app_2
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -107,8 +107,8 @@ services:
 
   urlshort-app-3:
     build:
-      context: ../src/v3
-      dockerfile: ../../docker-distributed/Dockerfile
+      context: ..
+      dockerfile: docker-distributed/Dockerfile
     container_name: urlshort_app_3
     environment:
       ASPNETCORE_ENVIRONMENT: Production

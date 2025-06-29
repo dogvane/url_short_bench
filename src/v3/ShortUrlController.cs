@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using url_short.common;
 
 namespace v2
 {
@@ -7,7 +8,7 @@ namespace v2
     {
         private readonly DbRepository _dbRepository;
         private readonly CacheService? _cacheService;
-        private static readonly ShortUrlStats stats = new(() => 0); // TODO: fix count
+        private static readonly ShortUrlStats stats = new(() => 0);
 
         public ShortUrlController(DbRepository dbRepository, CacheService? cacheService = null)
         {
@@ -25,7 +26,7 @@ namespace v2
                     return BadRequest("url is required");
                 }
 
-                var (id, alias) = _dbRepository.CreateShortLink(req.url, req.expire);
+                var (id, alias) = await _dbRepository.CreateShortLinkAsync(req.url, req.expire);
                 
                 // 将新创建的短链接缓存到Redis
                 if (_cacheService != null)
@@ -71,7 +72,7 @@ namespace v2
                 // 如果缓存未命中，从数据库获取
                 if (string.IsNullOrEmpty(result.url))
                 {
-                    result = _dbRepository.GetUrlByAlias(alias);
+                    result = await _dbRepository.GetUrlByAliasAsync(alias);
                     Console.WriteLine($"Database query for alias: {alias}");
                     
                     // 将数据库结果缓存到Redis
@@ -108,12 +109,12 @@ namespace v2
         }
 
         [HttpGet("/health")]
-        public IActionResult Health()
+        public async Task<IActionResult> Health()
         {
             try
             {
                 // 测试数据库连接
-                var testResult = _dbRepository.GetUrlByAlias("health-check-dummy");
+                var testResult = await _dbRepository.GetUrlByAliasAsync("health-check-dummy");
                 
                 // 测试Redis连接
                 var redisStatus = "disabled";
@@ -122,7 +123,7 @@ namespace v2
                     try
                     {
                         // 尝试一个简单的Redis操作
-                        _cacheService.SetStringAsync("health-check", "ok", TimeSpan.FromSeconds(10)).Wait();
+                        await _cacheService.SetStringAsync("health-check", "ok", TimeSpan.FromSeconds(10));
                         redisStatus = "connected";
                     }
                     catch

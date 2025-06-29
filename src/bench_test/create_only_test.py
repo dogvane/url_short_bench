@@ -4,7 +4,7 @@ import string
 
 # 仅测试创建性能的测试用例
 # locust -f create_only_test.py --host=http://localhost:10086
-# locust -f create_only_test.py --host=http://192.168.1.3:10086 -u 100 -r 100 --headless --csv=create_report --run-time 1m
+# locust -f create_only_test.py --host=http://192.168.1.3:10086 -u 1 -r 100 --headless --csv=create_report --run-time 1m
 
 # 分布式的测试命令：
 # 主节点 (Master): 负责分发任务和汇总数据，需要指定测试目标 --host

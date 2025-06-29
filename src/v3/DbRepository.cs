@@ -2,12 +2,15 @@ using Dapper;
 using MySql.Data.MySqlClient;
 using System;
 using System.Text;
+using common;
+using url_short.common;
 
 namespace v2
 {
     public class DbRepository
     {
         private readonly string _connectionString;
+        
         private const string TableCheckSql = @"CREATE TABLE IF NOT EXISTS short_links (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             alias VARCHAR(255) UNIQUE,
@@ -17,9 +20,14 @@ namespace v2
             INDEX idx_alias (alias)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 
-        public DbRepository(string connectionString)
+        private readonly SnowflakeIdGenerator _snowflake;
+
+        Base62Converter base62 = new Base62Converter(12);
+
+        public DbRepository(string connectionString, int workerId, int datacenterId)
         {
             _connectionString = connectionString;
+            _snowflake = new SnowflakeIdGenerator(workerId, datacenterId);
             EnsureTable();
         }
 
@@ -55,14 +63,15 @@ namespace v2
             }
         }
 
-        public (long id, string url, long expire) GetUrlByAlias(string alias)
+        // 异步版本：获取短链信息
+        public async Task<(long id, string url, long expire)> GetUrlByAliasAsync(string alias)
         {
             try
             {
-                using var connection = new MySqlConnection(_connectionString);
-                connection.Open();
+                await using var connection = new MySqlConnection(_connectionString);
+                await connection.OpenAsync();
                 var sql = "SELECT id, url, expire FROM short_links WHERE alias = @alias LIMIT 1";
-                var result = connection.QuerySingleOrDefault<(long, string, long)>(sql, new { alias });
+                var result = await connection.QuerySingleOrDefaultAsync<(long, string, long)>(sql, new { alias });
                 return result;
             }
             catch (Exception ex)
@@ -72,23 +81,18 @@ namespace v2
             }
         }
 
-        private static readonly SnowflakeIdGenerator _snowflake = new SnowflakeIdGenerator(1, 1);
-        
-        public (long id, string alias) CreateShortLink(string url, int? expireSeconds)
+        // 异步版本：创建短链
+        public async Task<(long id, string alias)> CreateShortLinkAsync(string url, int? expireSeconds)
         {
             try
             {
-                // 使用雪花算法生成唯一ID，避免数据库竞争
                 var id = _snowflake.NextId();
-                var alias = Base62Converter_Optimized.Encode(id);
+                var alias = base62.Encode(id);
                 var expire = expireSeconds.HasValue ? (DateTime.UtcNow.AddSeconds(expireSeconds.Value).Ticks) : 0;
-                
-                using var connection = new MySqlConnection(_connectionString);
-                connection.Open();
-                
+                await using var connection = new MySqlConnection(_connectionString);
+                await connection.OpenAsync();
                 var sql = "INSERT INTO short_links (id, alias, url, expire) VALUES (@id, @alias, @url, @expire)";
-                connection.Execute(sql, new { id, alias, url, expire });
-                
+                await connection.ExecuteAsync(sql, new { id, alias, url, expire });
                 return (id, alias);
             }
             catch (Exception ex)
@@ -175,53 +179,6 @@ namespace v2
         private static long TimeGen()
         {
             return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        }
-    }
-
-    /// <summary>
-    /// 优化版本的Base62转换器，专门用于高并发场景
-    /// </summary>
-    public static class Base62Converter_Optimized
-    {
-        private const string Characters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        private static readonly int Base = Characters.Length;
-
-        /// <summary>
-        /// 简单版本：直接编码ID，适用于使用雪花算法或预分配ID的场景
-        /// </summary>
-        public static string Encode(long number)
-        {
-            if (number < 0) throw new ArgumentOutOfRangeException(nameof(number), "Number must be non-negative.");
-            
-            if (number == 0) return Characters[0].ToString();
-
-            var sb = new StringBuilder();
-            while (number > 0)
-            {
-                sb.Insert(0, Characters[(int)(number % Base)]);
-                number /= Base;
-            }
-            
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// 解码Base62字符串为数字
-        /// </summary>
-        public static long Decode(string str)
-        {
-            if (string.IsNullOrWhiteSpace(str)) throw new ArgumentNullException(nameof(str));
-
-            long number = 0;
-            foreach (char c in str)
-            {
-                var index = Characters.IndexOf(c);
-                if (index == -1)
-                    throw new ArgumentException("Invalid character in Base62 string.", nameof(str));
-                number = number * Base + index;
-            }
-            
-            return number;
         }
     }
 }

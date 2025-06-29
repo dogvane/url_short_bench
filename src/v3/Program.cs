@@ -26,9 +26,12 @@ namespace v2
                 // 添加控制器服务
                 builder.Services.AddControllers();
 
-                // 配置数据库
+                // 配置数据库（支持雪花算法参数注入）
+                var snowflakeSection = builder.Configuration.GetSection("Snowflake");
+                int workerId = snowflakeSection.GetValue<int>("WorkerId", 1);
+                int datacenterId = snowflakeSection.GetValue<int>("DatacenterId", 1);
                 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-                builder.Services.AddSingleton(new DbRepository(connectionString));
+                builder.Services.AddSingleton(new DbRepository(connectionString, workerId, datacenterId));
 
                 // 配置Redis
                 var redisConnectionString = builder.Configuration.GetValue<string>("Redis:ConnectionString");
