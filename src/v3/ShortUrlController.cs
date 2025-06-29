@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using url_short.common;
+using System.Diagnostics;
 
 namespace v2
 {
@@ -8,17 +9,20 @@ namespace v2
     {
         private readonly DbRepository _dbRepository;
         private readonly CacheService? _cacheService;
+        private readonly MonitoringService _monitoringService;
         private static readonly ShortUrlStats stats = new(() => 0);
 
-        public ShortUrlController(DbRepository dbRepository, CacheService? cacheService = null)
+        public ShortUrlController(DbRepository dbRepository, MonitoringService monitoringService, CacheService? cacheService = null)
         {
             _dbRepository = dbRepository;
             _cacheService = cacheService;
+            _monitoringService = monitoringService;
         }
 
         [HttpPost("/create")]
         public async Task<IActionResult> Create([FromBody] CreateRequest req)
         {
+            var sw = Stopwatch.StartNew();
             try
             {
                 if (req == null || string.IsNullOrWhiteSpace(req.url))
@@ -26,26 +30,49 @@ namespace v2
                     return BadRequest("url is required");
                 }
 
-                var (id, alias) = await _dbRepository.CreateShortLinkAsync(req.url, req.expire);
+                var (id, alias) = await _monitoringService.MeasureDatabaseOperation("create_shorturl", 
+                    async () => await _dbRepository.CreateShortLinkAsync(req.url, req.expire));
                 
                 // 将新创建的短链接缓存到Redis
                 if (_cacheService != null)
                 {
                     var expireTime = req.expire.HasValue ? DateTime.UtcNow.AddSeconds(req.expire.Value).Ticks : 0;
-                    await _cacheService.SetShortLinkAsync(alias, id, req.url, expireTime);
+                    await _monitoringService.MeasureCacheOperation<bool>("set_shorturl",
+                        async () => {
+                            await _cacheService.SetShortLinkAsync(alias, id, req.url, expireTime);
+                            return true;
+                        });
                 }
                 
                 stats.IncCreate();
+                _monitoringService.RecordShortUrlCreated(sw.Elapsed.TotalSeconds);
 
                 return Ok(new { alias, url = req.url, id });
 
             }
             catch (System.Text.Json.JsonException ex)
             {
+                _monitoringService.RecordError("json_parse_error", "create");
+                Console.WriteLine($"JSON parsing error in Create: {ex.Message}");
                 return BadRequest("Invalid JSON body");
+            }
+            catch (Microsoft.AspNetCore.Http.BadHttpRequestException ex) when (ex.Message.Contains("Unexpected end of request content"))
+            {
+                // 处理客户端连接中断或请求不完整的情况
+                _monitoringService.RecordError("incomplete_request", "create");
+                Console.WriteLine($"Incomplete request in Create: {ex.Message}");
+                return BadRequest("Request content incomplete");
+            }
+            catch (System.OperationCanceledException ex)
+            {
+                // 处理请求取消的情况
+                _monitoringService.RecordError("request_cancelled", "create");
+                Console.WriteLine($"Request cancelled in Create: {ex.Message}");
+                return StatusCode(499, "Request cancelled"); // 499 Client Closed Request
             }
             catch (System.Exception ex)
             {
+                _monitoringService.RecordError("unhandled_exception", "create");
                 Console.WriteLine($"ERROR: Unhandled exception in Create: {ex.Message}");
                 return StatusCode(500, ex.Message);
             }
@@ -54,17 +81,23 @@ namespace v2
         [HttpGet("/u/{alias}")]
         public async Task<IActionResult> RedirectToUrl(string alias)
         {
+            var sw = Stopwatch.StartNew();
+            bool cacheHit = false;
+            
             try
             {
-                (long id, string url, long expire) result = (0, null, 0);
+                (long id, string? url, long expire) result = (0, null, 0);
 
                 // 首先尝试从Redis缓存获取
                 if (_cacheService != null)
                 {
-                    var cachedResult = await _cacheService.GetShortLinkAsync(alias);
+                    var cachedResult = await _monitoringService.MeasureCacheOperation("get_shorturl",
+                        async () => await _cacheService.GetShortLinkAsync(alias));
+                    
                     if (cachedResult.HasValue)
                     {
                         result = cachedResult.Value;
+                        cacheHit = true;
                         Console.WriteLine($"Cache hit for alias: {alias}");
                     }
                 }
@@ -72,13 +105,18 @@ namespace v2
                 // 如果缓存未命中，从数据库获取
                 if (string.IsNullOrEmpty(result.url))
                 {
-                    result = await _dbRepository.GetUrlByAliasAsync(alias);
+                    result = await _monitoringService.MeasureDatabaseOperation("get_shorturl_by_alias",
+                        async () => await _dbRepository.GetUrlByAliasAsync(alias));
                     Console.WriteLine($"Database query for alias: {alias}");
                     
                     // 将数据库结果缓存到Redis
                     if (_cacheService != null && !string.IsNullOrEmpty(result.url))
                     {
-                        await _cacheService.SetShortLinkAsync(alias, result.id, result.url, result.expire);
+                        await _monitoringService.MeasureCacheOperation<bool>("set_shorturl_from_db",
+                            async () => {
+                                await _cacheService.SetShortLinkAsync(alias, result.id, result.url, result.expire);
+                                return true;
+                            });
                     }
                 }
 
@@ -90,19 +128,41 @@ namespace v2
                         Console.WriteLine($"Link expired for alias: {alias}, expire: {result.expire}, now: {System.DateTime.UtcNow.Ticks}");
                         if (_cacheService != null)
                         {
-                            await _cacheService.RemoveShortLinkAsync(alias);
+                            await _monitoringService.MeasureCacheOperation<bool>("remove_expired_shorturl",
+                                async () => {
+                                    await _cacheService.RemoveShortLinkAsync(alias);
+                                    return true;
+                                });
                         }
                         // TODO: add delete from database
                         return NotFound();
                     }
                     Console.WriteLine($"Redirecting alias {alias} to {result.url}");
                     stats.IncGet();
+                    _monitoringService.RecordShortUrlQueried(cacheHit, sw.Elapsed.TotalSeconds);
                     return Redirect(result.url);
                 }
+                
+                _monitoringService.RecordShortUrlQueried(cacheHit, sw.Elapsed.TotalSeconds);
                 return NotFound();
+            }
+            catch (System.OperationCanceledException ex)
+            {
+                // 处理请求取消的情况
+                _monitoringService.RecordError("request_cancelled", "redirect");
+                Console.WriteLine($"Request cancelled in RedirectToUrl for alias '{alias}': {ex.Message}");
+                return StatusCode(499, "Request cancelled"); // 499 Client Closed Request
+            }
+            catch (Microsoft.AspNetCore.Http.BadHttpRequestException ex)
+            {
+                // 处理HTTP请求相关错误
+                _monitoringService.RecordError("bad_http_request", "redirect");
+                Console.WriteLine($"Bad HTTP request in RedirectToUrl for alias '{alias}': {ex.Message}");
+                return BadRequest("Invalid request");
             }
             catch (System.Exception ex)
             {
+                _monitoringService.RecordError("unhandled_exception", "redirect");
                 Console.WriteLine($"ERROR: Unhandled exception in RedirectToUrl for alias '{alias}': {ex.Message}");
                 return StatusCode(500, ex.Message);
             }

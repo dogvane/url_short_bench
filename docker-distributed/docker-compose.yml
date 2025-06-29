@@ -10,6 +10,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/conf.d:/etc/nginx/conf.d
+    environment:
+      - TZ=Asia/Shanghai
     depends_on:
       - urlshort-app-1
       - urlshort-app-2
@@ -42,6 +44,15 @@ services:
       retries: 20
       interval: 10s
       start_period: 60s
+    # 性能优化：增加内存和CPU限制
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
 
   redis:
     image: redis:7-alpine
@@ -60,6 +71,81 @@ services:
       timeout: 3s
       retries: 5
       interval: 5s
+    # 性能优化：增加内存限制
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: urlshort_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - urlshort-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: urlshort_grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - urlshort-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  mysql-exporter:
+    image: prom/mysqld-exporter
+    container_name: urlshort_mysql_exporter
+    environment:
+      - DATA_SOURCE_NAME=exporter:exporter123@tcp(mysql:3306)/
+    ports:
+      - "9104:9104"
+    networks:
+      - urlshort-network
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  redis-exporter:
+    image: oliver006/redis_exporter
+    container_name: urlshort_redis_exporter
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "9121:9121"
+    networks:
+      - urlshort-network
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
 
   urlshort-app-1:
     build:
@@ -69,9 +155,11 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=10;Max Pool Size=100;Connection Timeout=60;"
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=200;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
       Redis__ConnectionString: "redis:6379"
       Redis__Database: 0
+      Snowflake__WorkerId: 1
+      Snowflake__DatacenterId: 1
     ports:
       - "8081:8080"
     depends_on:
@@ -82,6 +170,15 @@ services:
     networks:
       - urlshort-network
     restart: unless-stopped
+    # 性能优化：增加资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
 
   urlshort-app-2:
     build:
@@ -91,9 +188,11 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=10;Max Pool Size=100;Connection Timeout=60;"
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=200;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
       Redis__ConnectionString: "redis:6379"
       Redis__Database: 0
+      Snowflake__WorkerId: 2
+      Snowflake__DatacenterId: 1
     ports:
       - "8082:8080"
     depends_on:
@@ -104,6 +203,15 @@ services:
     networks:
       - urlshort-network
     restart: unless-stopped
+    # 性能优化：增加资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
 
   urlshort-app-3:
     build:
@@ -113,9 +221,11 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=10;Max Pool Size=100;Connection Timeout=60;"
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=200;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
       Redis__ConnectionString: "redis:6379"
       Redis__Database: 0
+      Snowflake__WorkerId: 3
+      Snowflake__DatacenterId: 1
     ports:
       - "8083:8080"
     depends_on:
@@ -126,6 +236,15 @@ services:
     networks:
       - urlshort-network
     restart: unless-stopped
+    # 性能优化：增加资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
 
 networks:
   urlshort-network:
@@ -134,3 +253,5 @@ networks:
 volumes:
   mysql_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
