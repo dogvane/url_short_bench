@@ -25,6 +25,8 @@ namespace v2
 
         private readonly common.SnowflakeIdGenerator _snowflake;
 
+        public common.SnowflakeIdGenerator Snowflake => _snowflake;
+
         Base62Converter base62 = new Base62Converter(12);
 
         public DbRepository(string connectionString, int workerId, int datacenterId)
@@ -102,17 +104,43 @@ namespace v2
         // 异步版本：创建短链 - 优化性能
         public async Task<(long id, string alias)> CreateShortLinkAsync(string url, int? expireSeconds)
         {
+            long id = 0;
+            string alias = "";
             try
             {
-                var id = _snowflake.NextId();
-                var alias = base62.Encode(id);
+                id = _snowflake.NextId();
+                alias = base62.Encode(id);
                 var expire = expireSeconds.HasValue ? (DateTime.UtcNow.AddSeconds(expireSeconds.Value).Ticks) : 0;
-                
+
                 await using var connection = new MySqlConnection(_connectionString);
-                // 让Dapper自动处理连接管理
                 var sql = "INSERT INTO short_links (id, alias, url, expire) VALUES (@id, @alias, @url, @expire)";
                 await connection.ExecuteAsync(sql, new { id, alias, url, expire });
                 return (id, alias);
+            }
+            catch (MySql.Data.MySqlClient.MySqlException ex) when (ex.Message.Contains("Duplicate entry"))
+            {
+                Console.WriteLine($"ERROR: Duplicate entry for alias '{alias}', id={id}, url='{url}'. 查询数据库中已存在的记录...");
+
+                try
+                {
+                    await using var connection = new MySqlConnection(_connectionString);
+                    var query = "SELECT id, url, expire FROM short_links WHERE alias = @alias LIMIT 1";
+                    var exist = await connection.QuerySingleOrDefaultAsync<(long, string, long)>(query, new { alias });
+                    if (exist != default)
+                    {
+                        Console.WriteLine($"已存在记录: alias='{alias}', id={exist.Item1}, url='{exist.Item2}', expire={exist.Item3}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"未能在数据库中查到 alias='{alias}' 的记录。");
+                    }
+                }
+                catch (Exception dbEx)
+                {
+                    Console.WriteLine($"查询已存在 alias 记录时出错: {dbEx.Message}");
+                }
+
+                throw;
             }
             catch (Exception ex)
             {

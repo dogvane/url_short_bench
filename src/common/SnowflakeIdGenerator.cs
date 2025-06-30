@@ -18,11 +18,14 @@ namespace common
         private const int TimestampLeftShift = SequenceBits + WorkerIdBits + DatacenterIdBits;
         private const long SequenceMask = -1L ^ (-1L << SequenceBits);
 
-        private long _lastTimestamp = -1L;
+        private long _lastTimestamp;
         private long _sequence = 0L;
 
-        public long WorkerId { get; private set; }
-        public long DatacenterId { get; private set; }
+        public int WorkerId { get; }
+        public int DatacenterId { get; }
+
+        // 新增公开属性
+        public long LastTimestamp => _lastTimestamp;
 
         public SnowflakeIdGenerator(long workerId, long datacenterId)
         {
@@ -30,15 +33,20 @@ namespace common
                 throw new ArgumentException($"workerId must be between 0 and {MaxWorkerId}");
             if (datacenterId > MaxDatacenterId || datacenterId < 0)
                 throw new ArgumentException($"datacenterId must be between 0 and {MaxDatacenterId}");
-            WorkerId = workerId;
-            DatacenterId = datacenterId;
+            WorkerId = (int)workerId;
+            DatacenterId = (int)datacenterId;
+        }
+
+        private long NextTimestamp()
+        {
+            return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
         public long NextId()
         {
             lock (SyncRoot)
             {
-                var timestamp = TimeGen();
+                var timestamp = NextTimestamp();
                 if (timestamp < _lastTimestamp)
                 {
                     throw new InvalidOperationException($"Clock moved backwards. Refusing to generate id for {_lastTimestamp - timestamp} milliseconds");

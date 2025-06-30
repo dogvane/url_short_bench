@@ -135,7 +135,6 @@ services:
         condition: service_healthy
     volumes:
       - ./mysql-exporter/.my.cnf:/etc/.my.cnf:ro
-      - /etc/localtime:/etc/localtime:ro # 新增：挂载宿主机时区文件
 
   redis-exporter:
     image: oliver006/redis_exporter
@@ -159,7 +158,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=200;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=400;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
       Redis__ConnectionString: "redis:6379"
       Redis__Database: 0
       Snowflake__WorkerId: 1
@@ -178,7 +177,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
           cpus: '1.0'
         reservations:
           memory: 512M
@@ -192,7 +191,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=200;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=400;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
       Redis__ConnectionString: "redis:6379"
       Redis__Database: 0
       Snowflake__WorkerId: 2
@@ -211,7 +210,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
           cpus: '1.0'
         reservations:
           memory: 512M
@@ -225,7 +224,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=200;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=400;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
       Redis__ConnectionString: "redis:6379"
       Redis__Database: 0
       Snowflake__WorkerId: 3
@@ -244,7 +243,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
           cpus: '1.0'
         reservations:
           memory: 512M

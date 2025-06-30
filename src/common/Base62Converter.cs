@@ -9,8 +9,8 @@ namespace url_short.common
     /// </summary>
     public class Base62Converter : IShortCodeGen
     {
-        private const string Characters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        private static readonly int Base = Characters.Length;
+        private static readonly char[] Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".ToCharArray();
+        private static readonly int Base = Base62Chars.Length;
         private readonly int _fixedLength;
 
         /// <summary>
@@ -44,14 +44,14 @@ namespace url_short.common
 
             if (number == 0) 
             {
-                string zeroResult = Characters[0].ToString();
-                return _fixedLength > 0 ? zeroResult.PadLeft(_fixedLength, Characters[0]) : zeroResult;
+                string zeroResult = Base62Chars[0].ToString();
+                return _fixedLength > 0 ? zeroResult.PadLeft(_fixedLength, Base62Chars[0]) : zeroResult;
             }
 
             var sb = new StringBuilder();
             while (number > 0)
             {
-                sb.Insert(0, Characters[(int)(number % Base)]);
+                sb.Insert(0, Base62Chars[number % Base]);
                 number /= Base;
             }
             
@@ -60,7 +60,7 @@ namespace url_short.common
             // 如果设置了固定长度，则补齐前导零
             if (_fixedLength > 0 && result.Length < _fixedLength)
             {
-                result = result.PadLeft(_fixedLength, Characters[0]);
+                result = result.PadLeft(_fixedLength, Base62Chars[0]);
             }
             
             return result;
@@ -78,7 +78,7 @@ namespace url_short.common
             long number = 0;
             foreach (char c in code)
             {
-                var index = Characters.IndexOf(c);
+                var index = Array.IndexOf(Base62Chars, c);
                 if (index == -1)
                     throw new ArgumentException("Invalid character in Base62 string.", nameof(code));
                 number = number * Base + index;

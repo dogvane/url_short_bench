@@ -171,7 +171,7 @@ namespace Tests
             // 2. 验证一些特定的编码模式
             Assert.Equal("0", codes[0]);   // 0 -> "0"
             Assert.Equal("1", codes[1]);   // 1 -> "1"
-            Assert.Equal("Z", codes[61]);  // 61 -> "Z" (最后一个单字符)
+            Assert.Equal("z", codes[61]);  // 61 -> "Z" (最后一个单字符)
             Assert.Equal("10", codes[62]); // 62 -> "10" (第一个双字符)
             
             // 3. 编码长度应该随着数字增大而增加（或保持不变）

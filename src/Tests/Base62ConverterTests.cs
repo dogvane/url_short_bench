@@ -66,9 +66,7 @@ namespace Tests
         public void Decode_ValidBase62String_ReturnsCorrectNumber()
         {
             // Arrange
-            string input = "1a";
-            // "1a" = 1 * 62 + 36 = 62 + 36 = 98, 但实际计算结果是 72
-            // 让我们使用实际的计算结果
+            string input = "1A";
             long expected = 72;
             
             // Act
@@ -164,7 +162,7 @@ namespace Tests
             // Assert
             Assert.Equal("0", result0);
             Assert.Equal("1", result1);
-            Assert.Equal("Z", result61);
+            Assert.Equal("z", result61);
             Assert.Equal("10", result62);
         }
 
@@ -234,7 +232,7 @@ namespace Tests
             
             // Assert
             Assert.Equal(6, result.Length);
-            Assert.Equal("ZZZZZZ", result);
+            Assert.Equal("zzzzzz", result);
             
             // 验证解码后能得到原值
             long decoded = _fixedLengthConverter.Decode(result);
@@ -283,6 +281,53 @@ namespace Tests
                 string encoded = _fixedLengthConverter.Encode(value);
                 Assert.Equal(6, encoded.Length);
             }
+        }
+
+        [Fact]
+        public void Encode_DifferentIds_ShouldNotProduceSameAlias()
+        {
+            // Arrange
+            var converter = new Base62Converter(12); // 假设 alias 长度为 12
+            long id1 = 1939547950170640387;
+            long id2 = 1939547950170640411;
+            long id3 = 1939547950170640385;
+            long id4 = 1939547950170640384;
+            long id5 = 1939547950170640410;
+
+            // Act
+            string alias1 = converter.Encode(id1);
+            string alias2 = converter.Encode(id2);
+            string alias3 = converter.Encode(id3);
+            string alias4 = converter.Encode(id4);
+            string alias5 = converter.Encode(id5);
+
+            // Assert
+            Assert.NotEqual(alias1, alias2);
+            Assert.NotEqual(alias1, alias3);
+            Assert.NotEqual(alias1, alias4);
+            Assert.NotEqual(alias1, alias5);
+            Assert.NotEqual(alias2, alias3);
+            Assert.NotEqual(alias2, alias4);
+            Assert.NotEqual(alias2, alias5);
+            Assert.NotEqual(alias3, alias4);
+            Assert.NotEqual(alias3, alias5);
+            Assert.NotEqual(alias4, alias5);
+        }
+
+        [Fact]
+        public void Encode_KnownConflictIds_ShouldProduceDifferentAlias()
+        {
+            // Arrange
+            var converter = new Base62Converter(12);
+            long idA = 1939547950170640412; // 日志中的 id
+            long idB = 1939547950170640386; // 日志中的 id
+
+            // Act
+            string aliasA = converter.Encode(idA);
+            string aliasB = converter.Encode(idB);
+
+            // Assert
+            Assert.NotEqual(aliasA, aliasB);
         }
     }
 }

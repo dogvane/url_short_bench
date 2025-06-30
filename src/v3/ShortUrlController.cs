@@ -211,6 +211,30 @@ namespace v2
             }
         }
 
+        [HttpGet("/snowflake/config")]
+        public IActionResult CheckSnowflakeConfig()
+        {
+            try
+            {
+                // 假设 DbRepository 有 Snowflake 属性
+                var snowflake = _dbRepository.Snowflake;
+                var config = new
+                {
+                    WorkerId = snowflake.WorkerId,
+                    DatacenterId = snowflake.DatacenterId,
+                    LastTimestamp = snowflake.LastTimestamp,
+                    CurrentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    IsTimeRollback = snowflake.LastTimestamp > DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+                return Ok(config);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"CheckSnowflakeConfig error: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         public class CreateRequest
         {
             public required string url { get; set; }

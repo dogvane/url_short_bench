@@ -120,6 +120,9 @@ for app in urlshort-app-1 urlshort-app-2 urlshort-app-3 urlshort-app-4; do
         if curl -s http://localhost:$port/health >/dev/null 2>&1; then
             echo "✓ $app (port $port) is ready!"
             app_ready=$((app_ready + 1))
+            # 检查雪花算法配置
+            echo "  → Checking Snowflake config:"
+            curl -s http://localhost:$port/snowflake/config | jq . || curl -s http://localhost:$port/snowflake/config
         else
             echo "✗ $app (port $port) not ready"
         fi
