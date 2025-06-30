@@ -120,11 +120,11 @@ services:
       - prometheus
 
   mysql-exporter:
-    image: prom/mysqld-exporter
+    image: prom/mysqld-exporter:v0.15.0 # 降级到 v0.15.0
     container_name: urlshort_mysql_exporter
-    environment:
-      - DATA_SOURCE_NAME=exporter:exporter123@tcp(mysql:3306)/
-      - TZ=Asia/Shanghai           # 新增：设置时区为上海
+    command: --config.my-cnf=/etc/.my.cnf # 强制使用配置文件
+    volumes:
+      - ./mysql-exporter/.my.cnf:/etc/.my.cnf:ro # 挂载配置文件
     ports:
       - "9104:9104"
     networks:
@@ -133,8 +133,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    volumes:
-      - ./mysql-exporter/.my.cnf:/etc/.my.cnf:ro
 
   redis-exporter:
     image: oliver006/redis_exporter
