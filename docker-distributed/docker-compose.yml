@@ -124,6 +124,7 @@ services:
     container_name: urlshort_mysql_exporter
     environment:
       - DATA_SOURCE_NAME=exporter:exporter123@tcp(mysql:3306)/
+      - TZ=Asia/Shanghai           # 新增：设置时区为上海
     ports:
       - "9104:9104"
     networks:
@@ -132,6 +133,9 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    volumes:
+      - ./mysql-exporter/.my.cnf:/etc/.my.cnf:ro
+      - /etc/localtime:/etc/localtime:ro # 新增：挂载宿主机时区文件
 
   redis-exporter:
     image: oliver006/redis_exporter
