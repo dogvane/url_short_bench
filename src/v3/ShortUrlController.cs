@@ -98,7 +98,7 @@ namespace v2
                     {
                         result = cachedResult.Value;
                         cacheHit = true;
-                        Console.WriteLine($"Cache hit for alias: {alias}");
+                        // Console.WriteLine($"Cache hit for alias: {alias}");
                     }
                 }
 
@@ -137,7 +137,7 @@ namespace v2
                         // TODO: add delete from database
                         return NotFound();
                     }
-                    Console.WriteLine($"Redirecting alias {alias} to {result.url}");
+                    // Console.WriteLine($"Redirecting alias {alias} to {result.url}");
                     stats.IncGet();
                     _monitoringService.RecordShortUrlQueried(cacheHit, sw.Elapsed.TotalSeconds);
                     return Redirect(result.url);
