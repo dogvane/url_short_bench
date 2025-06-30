@@ -15,6 +15,10 @@ scrape_configs:
     static_configs:
       - targets: ['redis-exporter:9121']
 
+  - job_name: 'nginx-exporter'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+
   - job_name: 'urlshort-apps'
     static_configs:
       - targets: ['urlshort-app-1:8080', 'urlshort-app-2:8080', 'urlshort-app-3:8080']

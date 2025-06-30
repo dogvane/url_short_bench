@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 using Prometheus;
+using Prometheus.DotNetRuntime;
 
 namespace v2
 {
@@ -11,6 +12,8 @@ namespace v2
     {
         public static void Main(string[] args)
         {
+            var runtimeMetricsCollector = DotNetRuntimeStatsBuilder.Default().StartCollecting();
+
             try
             {
                 var builder = WebApplication.CreateBuilder(args);

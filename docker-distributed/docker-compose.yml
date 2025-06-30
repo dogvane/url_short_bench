@@ -148,6 +148,18 @@ services:
       redis:
         condition: service_healthy
 
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1.0
+    container_name: urlshort_nginx_exporter
+    command: -nginx.scrape-uri http://nginx/stub_status
+    ports:
+      - "9113:9113"
+    networks:
+      - urlshort-network
+    restart: unless-stopped
+    depends_on:
+      - nginx
+
   urlshort-app-1:
     build:
       context: ..

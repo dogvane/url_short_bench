@@ -477,12 +477,93 @@
           "refId": "C"
         }
       ],
-      "title": "🚨 Error Rates",
+      "title": "💣 Error Rate",
       "type": "timeseries"
     },
     {
       "datasource": "Prometheus",
-      "description": "System resource utilization",
+      "description": "Garbage Collection statistics, including collection counts per generation.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "hue",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "count"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(dotnet_gc_collection_count_total{job=\"urlshort-app\"}[1m])) by (generation)",
+          "interval": "",
+          "legendFormat": "GC Gen {{generation}}",
+          "refId": "A"
+        }
+      ],
+      "title": "🗑️ .NET GC Collections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "State of the .NET thread pool, including thread counts and queue length.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -501,7 +582,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -523,27 +604,26 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "bytes"
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
-        "x": 0,
+        "w": 12,
+        "x": 12,
         "y": 25
       },
-      "id": 6,
+      "id": 7,
       "options": {
         "legend": {
-          "calcs": ["last", "max"],
+          "calcs": [
+            "last",
+            "max"
+          ],
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -553,17 +633,23 @@
       },
       "targets": [
         {
-          "expr": "memory_usage_bytes",
+          "expr": "dotnet_threadpool_thread_count{job=\"urlshort-app\"}",
           "interval": "",
-          "legendFormat": "Memory Usage - {{instance}}",
+          "legendFormat": "Thread Count - {{instance}}",
           "refId": "A"
+        },
+        {
+          "expr": "dotnet_threadpool_queue_length{job=\"urlshort-app\"}",
+          "interval": "",
+          "legendFormat": "Queue Length - {{instance}}",
+          "refId": "B"
         }
       ],
-      "title": "💻 System Resource Usage",
+      "title": "🧵 .NET Thread Pool Usage",
       "type": "timeseries"
     }
   ],
-  "refresh": "1s",
+  "refresh": "5s",
   "schemaVersion": 27,
   "style": "dark",
   "tags": ["stress-test", "performance", "load-test"],
