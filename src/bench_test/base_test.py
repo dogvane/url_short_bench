@@ -3,8 +3,10 @@ import random
 import string
 import time
 from functools import wraps
+import argparse  # 新增
 
-BASE_URL = "http://localhost:10086"
+BASE_URL = "http://localhost:10086"  # 默认值
+# python base_test.py --base-url http://192.168.1.3:10086
 
 def log_execution_time(func):
     """装饰器：记录函数执行时间"""
@@ -104,6 +106,11 @@ def test_create_with_expire_and_expire_check():
     # assert expired_resp.status_code == 404
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="短链接服务测试")
+    parser.add_argument("--base-url", type=str, default=BASE_URL, help="服务基础URL, 例如 http://localhost:10086")
+    args = parser.parse_args()
+    BASE_URL = args.base_url  # 覆盖全局变量
+
     print("🚀 开始运行短链接测试套件")
     print("=" * 50)
     
