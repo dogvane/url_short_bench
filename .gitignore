@@ -742,3 +742,4 @@ src/bench_test/report/
 .Trashes
 ehthumbs.db
 Thumbs.db
+src/bench_test/created_aliases.txt
