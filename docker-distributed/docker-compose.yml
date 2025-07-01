@@ -16,6 +16,7 @@ services:
       - urlshort-app-1
       - urlshort-app-2
       - urlshort-app-3
+      - urlshort-app-4
     networks:
       - urlshort-network
     restart: unless-stopped
@@ -241,6 +242,39 @@ services:
       Snowflake__DatacenterId: 1
     ports:
       - "8083:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - urlshort-network
+    restart: unless-stopped
+    # 性能优化：增加资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  urlshort-app-4:
+    build:
+      context: ..
+      dockerfile: docker-distributed/Dockerfile
+    container_name: urlshort_app_4
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=urlshort;Uid=urlshort;Pwd=urlshort123;CharSet=utf8mb4;Pooling=true;Min Pool Size=20;Max Pool Size=400;Connection Timeout=30;Command Timeout=30;Connection Lifetime=0;Connection Reset=true;"
+      Redis__ConnectionString: "redis:6379"
+      Redis__Database: 0
+      Snowflake__WorkerId: 4
+      Snowflake__DatacenterId: 1
+    ports:
+      - "8084:8080"
     depends_on:
       mysql:
         condition: service_healthy
