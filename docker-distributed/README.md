@@ -1,6 +1,15 @@
 # URL Short Service - 分布式部署
 
 这是一个基于分布式架构的短链接服务，采用以下技术栈：
+# wsl 下开启外部对wsl内访问的方式，先获得wsl的虚拟网卡ip，然后做转发
+
+# (base) d@DESKTOP-LIC495U:/mnt/e/blogs/url_short_bench/docker-distributed$ hostname -I
+# 172.20.223.99 172.17.0.1 172.18.0.1
+# windows 管理员权限
+# 转发端口
+#  netsh interface portproxy add v4tov4 listenport=10086 listenaddress=0.0.0.0 connectport=10086 connectaddress=172.20.223.99 
+# 允许防火墙访问
+#  netsh advfirewall firewall add rule name="WSL 10086" dir=in action=allow protocol=TCP localport=10086
 
 ## 架构组件
 
